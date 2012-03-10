@@ -1,0 +1,6 @@
+syntax: glob
+
+bin/*
+*.sdf
+*.suo
+gtk-gui/gui.stetic
