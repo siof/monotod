@@ -38,7 +38,8 @@ public partial class MainWindow: Gtk.Window
     
     protected void OnDeleteEvent (object sender, DeleteEventArgs a)
     {
-        SendLogoutRequest();
+		if (client != null)
+        	SendLogoutRequest();
         
         Application.Quit ();
         a.RetVal = true;
@@ -66,7 +67,7 @@ public partial class MainWindow: Gtk.Window
     
     private void SendUniqueKey()
     {
-         byte[] bytes = BitConverter.GetBytes((short)MessageType.UNIQUE_KEY);
+        byte[] bytes = BitConverter.GetBytes((short)MessageType.UNIQUE_KEY);
         byte[] sourceArray = StrToByteArray(UniqueKey);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
