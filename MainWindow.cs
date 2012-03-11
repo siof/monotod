@@ -109,11 +109,19 @@ public partial class MainWindow: Gtk.Window
     
     private static string GetHardDiskId(string drive)
     {
-        ManagementObject obj2 = new ManagementObject("win32_logicaldisk.deviceid=\"" + drive + ":\"");
-        obj2.Get();
-        string str = obj2["VolumeSerialNumber"].ToString();
-        obj2.Dispose();
-        return str;
+        // test implementation HDD ID for unix system :P based on mono doc
+        System.Diagnostics.Process proc = new System.Diagnostics.Process();
+
+        proc.EnableRaisingEvents = false;
+        proc.StartInfo.FileName = "hdparm";
+        proc.StartInfo.Arguments = "-i /dev/hda | grep -i serial";
+        proc.Start();
+        
+        // ReadToEnd jest SynchronizationContext, potrzebujemy czekac ?
+        //proc.WaitForExit();
+
+        return proc.StandardOutput.ReadToEnd();
+
     }
 
     private string GetProcessorId()
