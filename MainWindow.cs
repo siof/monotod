@@ -22,6 +22,8 @@ public partial class MainWindow: Gtk.Window
         UNIQUE_KEY = 4
     }
     
+    private bool wine = true;    // bo kij wie jak zrobić standardowe #define ... #ifdef
+    
     private System.Timers.Timer m_loginTimer = null;
     private System.Timers.Timer m_onlineTimer = null;
     private UdpClient client = null;
@@ -29,6 +31,7 @@ public partial class MainWindow: Gtk.Window
     private IPEndPoint m_socket; 
     private int PORT = 0x17a2;
     private string HOST = "77.252.88.4";
+    private UTF8Encoding encoding = new UTF8Encoding();
     
     public MainWindow (): base (Gtk.WindowType.Toplevel)
     {
@@ -38,9 +41,9 @@ public partial class MainWindow: Gtk.Window
     
     protected void OnDeleteEvent (object sender, DeleteEventArgs a)
     {
-       if (client != null)
+        if (client != null)
             SendLogoutRequest();
-
+        
         Application.Quit ();
         a.RetVal = true;
     }
@@ -49,7 +52,6 @@ public partial class MainWindow: Gtk.Window
     {
         if (client == null)
             client = new UdpClient(PORT);
-
         m_onlineTimer = new System.Timers.Timer(15000.0);
         m_onlineTimer.Elapsed += new ElapsedEventHandler(this.SendLoginRequest);
         m_onlineTimer.Start();
@@ -57,14 +59,23 @@ public partial class MainWindow: Gtk.Window
         m_loginTimer.Elapsed += new ElapsedEventHandler(this.SendOnlineRequest);
         m_loginTimer.Start();
     
-        UniqueKey = GetUniqueKey();
+        UniqueKey = GetUniqueKey("");
         SendUniqueKey();
         
         string arg = "";
-        if (chopengl.Active)
-            arg = "-opengl";
+        string app = "";
 
-        Process.Start("Wow.exe", arg);
+        if (wine == true)
+        { 
+            app = "wine";
+            arg = "Wow.exe";
+        }
+        else
+            app = "Wow.exe";
+        
+        if (chopengl.Active)
+            arg += " -opengl";
+        Process.Start(app, arg);
     }
     
     private void SendUniqueKey()
@@ -72,7 +83,6 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.UNIQUE_KEY);
         byte[] sourceArray = StrToByteArray(UniqueKey);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
-
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -83,7 +93,6 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGIN_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
-
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -100,7 +109,6 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGOUT_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
-
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -124,7 +132,7 @@ public partial class MainWindow: Gtk.Window
         proc.StartInfo.Arguments = "-i" + drive + " | grep -i serial";
         proc.Start();
         
-        // ReadToEnd jest SynchronizationContext, potrzebujemy czekac ?
+        // ReadToEnd jest SynchronizationContext, potrzebujemy czekac ?  // raczej zbędne, pozatym zależnie od implementacji może spieprzyć sie coś przy czytaniu
         //proc.WaitForExit();
 
         return proc.StandardOutput.ReadToEnd();
@@ -145,13 +153,12 @@ public partial class MainWindow: Gtk.Window
         return str;
     }
 
-    public static byte[] StrToByteArray(string str)
+    public byte[] StrToByteArray(string str)
     {
-        UTF8Encoding encoding = new UTF8Encoding();
         return encoding.GetBytes(str);
     }
 
-    private string GetUniqueKey(string drive = "C")
+    private string GetUniqueKey(string drive)
     {
         try
         {
