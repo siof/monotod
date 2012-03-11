@@ -38,9 +38,9 @@ public partial class MainWindow: Gtk.Window
     
     protected void OnDeleteEvent (object sender, DeleteEventArgs a)
     {
-		if (client != null)
-        	SendLogoutRequest();
-        
+       if (client != null)
+            SendLogoutRequest();
+
         Application.Quit ();
         a.RetVal = true;
     }
@@ -49,6 +49,7 @@ public partial class MainWindow: Gtk.Window
     {
         if (client == null)
             client = new UdpClient(PORT);
+
         m_onlineTimer = new System.Timers.Timer(15000.0);
         m_onlineTimer.Elapsed += new ElapsedEventHandler(this.SendLoginRequest);
         m_onlineTimer.Start();
@@ -62,6 +63,7 @@ public partial class MainWindow: Gtk.Window
         string arg = "";
         if (chopengl.Active)
             arg = "-opengl";
+
         Process.Start("Wow.exe", arg);
     }
     
@@ -70,6 +72,7 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.UNIQUE_KEY);
         byte[] sourceArray = StrToByteArray(UniqueKey);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
+
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -80,6 +83,7 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGIN_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
+
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -96,6 +100,7 @@ public partial class MainWindow: Gtk.Window
         byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGOUT_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
+
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
@@ -110,11 +115,13 @@ public partial class MainWindow: Gtk.Window
     private static string GetHardDiskId(string drive)
     {
         // test implementation HDD ID for unix system :P based on mono doc
-        System.Diagnostics.Process proc = new System.Diagnostics.Process();
+        Process proc = new Process();
 
         proc.EnableRaisingEvents = false;
+
+        // nie jest standardem w systemie :p 
         proc.StartInfo.FileName = "hdparm";
-        proc.StartInfo.Arguments = "-i /dev/hda | grep -i serial";
+        proc.StartInfo.Arguments = "-i" + drive + " | grep -i serial";
         proc.Start();
         
         // ReadToEnd jest SynchronizationContext, potrzebujemy czekac ?
@@ -148,6 +155,7 @@ public partial class MainWindow: Gtk.Window
     {
         try
         {
+            // przerobic to, aby znajodowalo unix type sciezke do HDD /dev/hda /dev/sda or smth
             if (drive == string.Empty)
             {
                 foreach (DriveInfo info in DriveInfo.GetDrives())
