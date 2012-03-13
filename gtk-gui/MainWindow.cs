@@ -32,7 +32,7 @@ public partial class MainWindow
 		this.txtLogin = new global::Gtk.Entry ();
 		this.txtLogin.CanFocus = true;
 		this.txtLogin.Name = "txtLogin";
-		this.txtLogin.Text = "kalurza2";
+		this.txtLogin.Text = "login";
 		this.txtLogin.IsEditable = true;
 		this.txtLogin.InvisibleChar = '●';
 		this.fixed2.Add (this.txtLogin);

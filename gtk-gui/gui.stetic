@@ -31,7 +31,7 @@
           <widget class="Gtk.Entry" id="txtLogin">
             <property name="MemberName" />
             <property name="CanFocus">True</property>
-            <property name="Text" translatable="yes">kalurza2</property>
+            <property name="Text" translatable="yes">login</property>
             <property name="IsEditable">True</property>
             <property name="InvisibleChar">●</property>
           </widget>
