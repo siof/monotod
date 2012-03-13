@@ -30,6 +30,7 @@ public partial class MainWindow: Gtk.Window
     private int PORT = 0x17a2;
     private string HOST = "77.252.88.4";
     private UTF8Encoding encoding = new UTF8Encoding();
+    private Process wowProc;
     
     public MainWindow (): base (Gtk.WindowType.Toplevel)
     {
@@ -40,11 +41,24 @@ public partial class MainWindow: Gtk.Window
     protected void OnDeleteEvent (object sender, DeleteEventArgs a)
     {
         if (client != null)
+        {
             SendLogoutRequest();
+            client.Close();
+        }
 
-        client.Close();
-        m_loginTimer.Dispose();
-        m_onlineTimer.Dispose();
+        if (m_loginTimer != null)
+            m_loginTimer.Dispose();
+
+        if (m_onlineTimer != null)
+            m_onlineTimer.Dispose();
+
+        if (wowProc != null)
+        {
+            if (wowProc.HasExited == false)
+                wowProc.Kill();
+            wowProc.Dispose();
+        }
+
         Application.Quit ();
         a.RetVal = true;
     }
@@ -72,7 +86,7 @@ public partial class MainWindow: Gtk.Window
         if (chopengl.Active)
             arg += " -opengl";
 
-        Process.Start("wine", arg);
+        wowProc = Process.Start("wine", arg);
     }
     
     private void SendUniqueKey()
