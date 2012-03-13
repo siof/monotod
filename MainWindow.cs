@@ -10,7 +10,7 @@ using Gtk;
 
 public partial class MainWindow: Gtk.Window
 {
-    public enum MessageType
+    public enum MsgType
     {
         ACK = 1,
         LOGIN_REQUEST = 5,
@@ -21,8 +21,6 @@ public partial class MainWindow: Gtk.Window
         PONG = 0x52,
         UNIQUE_KEY = 4
     }
-    
-    private bool wine = true;    // bo kij wie jak zrobić standardowe #define ... #ifdef
     
     private System.Timers.Timer m_loginTimer = null;
     private System.Timers.Timer m_onlineTimer = null;
@@ -43,7 +41,10 @@ public partial class MainWindow: Gtk.Window
     {
         if (client != null)
             SendLogoutRequest();
-        
+
+        client.Close();
+        m_loginTimer.Dispose();
+        m_onlineTimer.Dispose();
         Application.Quit ();
         a.RetVal = true;
     }
@@ -52,6 +53,7 @@ public partial class MainWindow: Gtk.Window
     {
         if (client == null)
             client = new UdpClient(PORT);
+
         m_onlineTimer = new System.Timers.Timer(15000.0);
         m_onlineTimer.Elapsed += new ElapsedEventHandler(this.SendLoginRequest);
         m_onlineTimer.Start();
@@ -59,28 +61,23 @@ public partial class MainWindow: Gtk.Window
         m_loginTimer.Elapsed += new ElapsedEventHandler(this.SendOnlineRequest);
         m_loginTimer.Start();
     
-        UniqueKey = GetUniqueKey("");
+        UniqueKey = GetUniqueKey();
+
         SendUniqueKey();
         
         string arg = "";
-        string app = "";
 
-        if (wine == true)
-        { 
-            app = "wine";
-            arg = "Wow.exe";
-        }
-        else
-            app = "Wow.exe";
-        
+        arg = "Wow.exe";
+
         if (chopengl.Active)
             arg += " -opengl";
-        Process.Start(app, arg);
+
+        Process.Start("wine", arg);
     }
     
     private void SendUniqueKey()
     {
-        byte[] bytes = BitConverter.GetBytes((short)MessageType.UNIQUE_KEY);
+        byte[] bytes = BitConverter.GetBytes((short)MsgType.UNIQUE_KEY);
         byte[] sourceArray = StrToByteArray(UniqueKey);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
@@ -90,7 +87,7 @@ public partial class MainWindow: Gtk.Window
     
     private void SendLoginRequest(object sender, ElapsedEventArgs e)
     {
-        byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGIN_REQUEST);
+        byte[] bytes = BitConverter.GetBytes((short)MsgType.LOGIN_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
@@ -100,13 +97,13 @@ public partial class MainWindow: Gtk.Window
 
     private void SendOnlineRequest(object sender, ElapsedEventArgs e)
     {
-        byte[] bytes = BitConverter.GetBytes((short)MessageType.ONLINE_REQUEST);
+        byte[] bytes = BitConverter.GetBytes((short)MsgType.ONLINE_REQUEST);
         client.Send(bytes, bytes.Length, m_socket);
     }
     
     public void SendLogoutRequest()
     {
-        byte[] bytes = BitConverter.GetBytes((short)MessageType.LOGOUT_REQUEST);
+        byte[] bytes = BitConverter.GetBytes((short)MsgType.LOGOUT_REQUEST);
         byte[] sourceArray = StrToByteArray(txtLogin.Text);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
@@ -116,41 +113,73 @@ public partial class MainWindow: Gtk.Window
 
     private void SendPing()
     {
-        byte[] bytes = BitConverter.GetBytes((short)MessageType.PING);
+        byte[] bytes = BitConverter.GetBytes((short)MsgType.PING);
         client.Send(bytes, bytes.Length, m_socket);
     }
     
-    private static string GetHardDiskId(string drive)
+    private string GetHardDiskId()
     {
-        // test implementation HDD ID for unix system :P based on mono doc
+        // test implementation HDD ID for unix system :P
         Process proc = new Process();
 
         proc.EnableRaisingEvents = false;
-
-        // nie jest standardem w systemie :p 
-        proc.StartInfo.FileName = "hdparm";
-        proc.StartInfo.Arguments = "-i" + drive + " | grep -i serial";
+        //proc.StartInfo.FileName = "ls";
+        //proc.StartInfo.Arguments = "-l /dev/disk/by-id/ | grep scsi- | grep -v part | awk '{print $(NF-2)}' | sed 's|../../||g' | sed 's/scsi-...._.*_//g'";
+        proc.StartInfo.FileName = "ls";
+        proc.StartInfo.Arguments = "-1 /dev/disk/by-id/";
+        proc.StartInfo.UseShellExecute = false;
+        proc.StartInfo.RedirectStandardOutput = true;
         proc.Start();
-        
-        // ReadToEnd jest SynchronizationContext, potrzebujemy czekac ?  // raczej zbędne, pozatym zależnie od implementacji może spieprzyć sie coś przy czytaniu
-        //proc.WaitForExit();
 
-        return proc.StandardOutput.ReadToEnd();
+        string line = "";
+        string hddid = "";
 
+        // c# wersja: | grep scsi- | grep -v part | awk '{print $(NF-2)}' | sed 's|../../||g' | sed 's/scsi-...._.*_//g'
+        while ((line = proc.StandardOutput.ReadLine()) != null)
+        {
+            if (line.Length == 0)
+                continue;
+
+            if (!line.Contains("scsi-"))
+                continue;
+
+            if (line.Contains("part"))
+                continue;
+
+            int ind1 = line.LastIndexOf("_");
+
+            if (ind1 >= 0)
+                hddid = line.Substring(ind1+1);
+        }
+
+        proc.Dispose();
+
+        if (hddid == "")
+            return null;
+
+        return hddid;
     }
 
     private string GetProcessorId()
     {
-        string str = string.Empty;
-        ManagementObjectCollection instances = new ManagementClass("win32_processor").GetInstances();
-        foreach (ManagementObject obj2 in instances)
-        {
-            if (str == "")
-            {
-                return obj2.Properties["processorID"].Value.ToString();
-            }
-        }
-        return str;
+        // temp implementation for CPU ID for unix system :P
+        Process proc = new Process();
+
+        proc.EnableRaisingEvents = false;
+        proc.StartInfo.FileName = "uname";
+        proc.StartInfo.Arguments = "-i";
+        proc.StartInfo.RedirectStandardOutput = true;
+        proc.StartInfo.UseShellExecute = false;
+        proc.Start();
+
+        string cpuid = proc.StandardOutput.ReadLine();
+        proc.WaitForExit();
+        proc.Dispose();
+
+        if (cpuid == null || cpuid == "")
+            return null;
+
+        return cpuid;
     }
 
     public byte[] StrToByteArray(string str)
@@ -158,33 +187,35 @@ public partial class MainWindow: Gtk.Window
         return encoding.GetBytes(str);
     }
 
-    private string GetUniqueKey(string drive)
+    private string GetUniqueKey()
     {
-        try
+        /*
+        // zbędne na linuxie
+        if (drive == string.Empty)
         {
-            // przerobic to, aby znajodowalo unix type sciezke do HDD /dev/hda /dev/sda or smth
-            if (drive == string.Empty)
+            foreach (DriveInfo info in DriveInfo.GetDrives())
             {
-                foreach (DriveInfo info in DriveInfo.GetDrives())
+                if (info.IsReady)
                 {
-                    if (info.IsReady)
-                    {
-                        drive = info.RootDirectory.ToString();
-                        break;
-                    }
+                    drive = info.RootDirectory.ToString();
+                    break;
                 }
             }
-            if (drive.EndsWith(@":\"))
-            {
-                drive = drive.Substring(0, drive.Length - 2);
-            }
-            string hardDiskId = GetHardDiskId(drive);
-            string processorId = GetProcessorId();
-            return (processorId.Substring(13) + processorId.Substring(1, 4) + hardDiskId + processorId.Substring(4, 4));
         }
-        catch (Exception)
-        {
-            return null;
-        }
+        */
+
+        string hardDiskId = GetHardDiskId();
+        string processorId = GetProcessorId();
+
+        string tmpUniq = processorId.Substring(processorId.Length - 4);
+        tmpUniq += processorId.Substring(1, 4);
+        tmpUniq += hardDiskId;
+
+        if (processorId.Length >= 8)
+            tmpUniq += processorId.Substring(4, 4);
+        else if (processorId.Length > 4)
+            tmpUniq += processorId.Substring(4);
+
+        return tmpUniq;
     }
 }
