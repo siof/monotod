@@ -88,47 +88,40 @@ public partial class MainWindow: Gtk.Window
 
         wowProc = Process.Start("wine", arg);
     }
-    
-    private void SendUniqueKey()
+
+    private void SendPacket(MsgType msg, string data)
     {
-        byte[] bytes = BitConverter.GetBytes((short)MsgType.UNIQUE_KEY);
-        byte[] sourceArray = StrToByteArray(UniqueKey);
+        byte[] bytes = BitConverter.GetBytes((short)msg);
+        byte[] sourceArray = StrToByteArray(data);
         byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
         Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
         Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
         client.Send(destinationArray, destinationArray.Length, m_socket);
+    }
+
+    private void SendUniqueKey()
+    {
+        SendPacket(MsgType.UNIQUE_KEY, UniqueKey);
     }
     
     private void SendLoginRequest(object sender, ElapsedEventArgs e)
     {
-        byte[] bytes = BitConverter.GetBytes((short)MsgType.LOGIN_REQUEST);
-        byte[] sourceArray = StrToByteArray(txtLogin.Text);
-        byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
-        Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
-        Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
-        client.Send(destinationArray, destinationArray.Length, m_socket);
+        SendPacket(MsgType.LOGIN_REQUEST, txtLogin.Text);
     }
 
     private void SendOnlineRequest(object sender, ElapsedEventArgs e)
     {
-        byte[] bytes = BitConverter.GetBytes((short)MsgType.ONLINE_REQUEST);
-        client.Send(bytes, bytes.Length, m_socket);
+        SendPacket(MsgType.ONLINE_REQUEST, "");
     }
     
     public void SendLogoutRequest()
     {
-        byte[] bytes = BitConverter.GetBytes((short)MsgType.LOGOUT_REQUEST);
-        byte[] sourceArray = StrToByteArray(txtLogin.Text);
-        byte[] destinationArray = new byte[(bytes.Length + sourceArray.Length) - 1];
-        Array.Copy(bytes, 0, destinationArray, 0, bytes.Length);
-        Array.Copy(sourceArray, 0, destinationArray, 1, sourceArray.Length);
-        client.Send(destinationArray, destinationArray.Length, m_socket);
+        SendPacket(MsgType.LOGOUT_REQUEST, txtLogin.Text);
     }
 
     private void SendPing()
     {
-        byte[] bytes = BitConverter.GetBytes((short)MsgType.PING);
-        client.Send(bytes, bytes.Length, m_socket);
+        SendPacket(MsgType.PING, "");
     }
     
     private string GetHardDiskId()
@@ -231,5 +224,25 @@ public partial class MainWindow: Gtk.Window
             tmpUniq += processorId.Substring(4);
 
         return tmpUniq;
+    }
+
+    protected void OnBtnAutorsClicked (object sender, System.EventArgs e)
+    {
+        // Create a new About dialog
+        AboutDialog about = new AboutDialog();
+
+        string[] names = {"Siof", "Lukaasm"};
+
+        // Change the Dialog's properties to the appropriate values.
+        about.ProgramName = "MonoToD";
+        about.Authors = names;
+        about.Website = "http://wow.hellground.pl";
+        about.Comments = "Linuxowy minimalistyczny launcher serwera Theatre of Dreams napisany w C# z użyciem Mono oraz GTK#";
+
+        // Show the Dialog and pass it control
+        about.Run();
+
+        // Destroy the dialog
+        about.Destroy();
     }
 }
